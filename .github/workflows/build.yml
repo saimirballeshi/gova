@@ -10,28 +10,30 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
-        go-version: '1.21'
+        go-version: '1.25'
 
     - name: Install Dependencies
       run: |
         go mod tidy
-        # GioUI dependencies for Linux (needed for cross-compilation setup sometimes)
+        # GioUI dependencies for Linux (needed for cross-compilation setup)
         sudo apt-get update && sudo apt-get install -y libwayland-dev libx11-dev libx11-xcb-dev libxkbcommon-x11-dev libgles2-mesa-dev libegl1-mesa-dev
 
     - name: Build for Windows
       env:
         GOOS: windows
         GOARCH: amd64
-        CGO_ENABLED: 0  # Important for easy cross-compilation
+        CGO_ENABLED: 0
       run: go build -ldflags "-H=windowsgui" -o GovaAdmin.exe main.go
 
     - name: Upload Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: GovaAdmin-Windows
         path: GovaAdmin.exe
+        # Optional: Set this to true if you ever use matrix builds to avoid errors
+        overwrite: true
