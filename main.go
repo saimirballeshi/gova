@@ -7,9 +7,10 @@ import (
 	"image/color"
 	"log"
 	"os"
-	"strings"
+	// "strings" removed unused import
 
 	"gioui.org/app"
+	"gioui.org/font" // Added this import for font.Bold
 	"gioui.org/font/gofont"
 	"gioui.org/io/system"
 	"gioui.org/layout"
@@ -48,7 +49,7 @@ func DrawCard(gtx layout.Context, content layout.Widget) layout.Dimensions {
 				Rect: image.Rectangle{Max: gtx.Constraints.Min},
 				SE:   gtx.Dp(8), SW: gtx.Dp(8), NW: gtx.Dp(8), NE: gtx.Dp(8),
 			}.Push(gtx.Ops).Pop()
-			
+
 			paint.Fill(gtx.Ops, BgCard)
 			return layout.UniformInset(unit.Dp(0)).Layout(gtx, content)
 		})
@@ -113,9 +114,10 @@ type TextField struct {
 	Attr     string
 	Editor   widget.Editor
 }
-func (t *TextField) Name() string { return t.LabelStr }
+
+func (t *TextField) Name() string      { return t.LabelStr }
 func (t *TextField) Attribute() string { return t.Attr }
-func (t *TextField) Value() string { return t.Editor.Text() }
+func (t *TextField) Value() string     { return t.Editor.Text() }
 func (t *TextField) SetText(txt string) { t.Editor.SetText(txt) }
 
 func (t *TextField) Layout(gtx layout.Context, th *material.Theme) layout.Dimensions {
@@ -123,7 +125,8 @@ func (t *TextField) Layout(gtx layout.Context, th *material.Theme) layout.Dimens
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			l := material.Body2(th, t.LabelStr)
 			l.Color = TextMain
-			l.Font.Weight = text.Bold
+			// FIX: Changed text.Bold to font.Bold
+			l.Font.Weight = font.Bold 
 			return l.Layout(gtx)
 		}),
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
@@ -141,6 +144,7 @@ func (t *TextField) Layout(gtx layout.Context, th *material.Theme) layout.Dimens
 
 // User Resource Definition
 type UserResource struct{}
+
 func (u UserResource) Label() string { return "User" }
 func (u UserResource) Fields() []Field {
 	return []Field{
@@ -158,19 +162,19 @@ type App struct {
 	Theme      *material.Theme
 	Resources  []Resource
 	CurrentRes Resource
-	
+
 	// State
 	View       string // "index", "create"
 	CachedData []*neo4j.Record
-	
+
 	// Widgets
 	NavList    widget.List
 	NavButtons []*widget.Clickable
 	TableList  widget.List
 	CreateBtn  widget.Clickable
 	SaveBtn    widget.Clickable
-	
-	Window     *app.Window
+
+	Window *app.Window
 }
 
 func (a *App) Layout(gtx layout.Context) layout.Dimensions {
@@ -198,15 +202,16 @@ func (a *App) renderSidebar(gtx layout.Context) layout.Dimensions {
 	gtx.Constraints.Min.X = gtx.Dp(250)
 	gtx.Constraints.Max.X = gtx.Dp(250)
 	paint.FillShape(gtx.Ops, BgSidebar, clip.Rect{Max: gtx.Constraints.Max}.Op())
-	
+
 	return layout.Inset{Top: unit.Dp(30)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 		return material.List(a.Theme, &a.NavList).Layout(gtx, len(a.Resources), func(gtx layout.Context, i int) layout.Dimensions {
-			if a.NavButtons[i].Clicked(gtx) {
+			// FIX: Clicked() takes no arguments
+			if a.NavButtons[i].Clicked() {
 				a.CurrentRes = a.Resources[i]
 				a.View = "index"
 				a.fetchData()
 			}
-			
+
 			// Custom Sidebar Button
 			return material.Clickable(gtx, a.NavButtons[i], func(gtx layout.Context) layout.Dimensions {
 				return layout.Inset{Top: unit.Dp(15), Bottom: unit.Dp(15), Left: unit.Dp(20)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
@@ -214,7 +219,8 @@ func (a *App) renderSidebar(gtx layout.Context) layout.Dimensions {
 					l.Color = color.NRGBA{200, 200, 200, 255}
 					if a.CurrentRes == a.Resources[i] {
 						l.Color = NovaBlue
-						l.Font.Weight = text.Bold
+						// FIX: Changed text.Bold to font.Bold
+						l.Font.Weight = font.Bold
 					}
 					return l.Layout(gtx)
 				})
@@ -230,7 +236,8 @@ func (a *App) renderTable(gtx layout.Context) layout.Dimensions {
 			return layout.Flex{Axis: layout.Horizontal, Spacing: layout.SpaceBetween}.Layout(gtx,
 				layout.Rigid(material.H5(a.Theme, a.CurrentRes.Label()).Layout),
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					if a.CreateBtn.Clicked(gtx) {
+					// FIX: Clicked() takes no arguments
+					if a.CreateBtn.Clicked() {
 						a.View = "create"
 					}
 					btn := material.Button(a.Theme, &a.CreateBtn, "Create New")
@@ -246,7 +253,7 @@ func (a *App) renderTable(gtx layout.Context) layout.Dimensions {
 				return material.List(a.Theme, &a.TableList).Layout(gtx, len(a.CachedData), func(gtx layout.Context, i int) layout.Dimensions {
 					// Extract Node Props
 					node := a.CachedData[i].Values[0].(neo4j.Node)
-					
+
 					// Row Layout
 					return layout.Stack{}.Layout(gtx,
 						layout.Expanded(func(gtx layout.Context) layout.Dimensions {
@@ -280,11 +287,11 @@ func (a *App) renderForm(gtx layout.Context) layout.Dimensions {
 		return DrawCard(gtx, func(gtx layout.Context) layout.Dimensions {
 			gtx.Constraints.Min.X = gtx.Dp(400) // Fixed Width Form
 			return layout.Inset{Top: unit.Dp(30), Bottom: unit.Dp(30), Left: unit.Dp(30), Right: unit.Dp(30)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-				
+
 				var kids []layout.FlexChild
 				kids = append(kids, layout.Rigid(material.H6(a.Theme, "Create "+a.CurrentRes.Label()).Layout))
 				kids = append(kids, layout.Rigid(layout.Spacer{Height: unit.Dp(20)}.Layout))
-				
+
 				// Render Fields
 				for _, f := range a.CurrentRes.Fields() {
 					fieldWidget := f // Capture closure
@@ -292,10 +299,11 @@ func (a *App) renderForm(gtx layout.Context) layout.Dimensions {
 						return fieldWidget.Layout(gtx, a.Theme)
 					}))
 				}
-				
+
 				// Save Button
 				kids = append(kids, layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					if a.SaveBtn.Clicked(gtx) {
+					// FIX: Clicked() takes no arguments
+					if a.SaveBtn.Clicked() {
 						go func() {
 							data := make(map[string]interface{})
 							for _, f := range a.CurrentRes.Fields() {
@@ -332,17 +340,21 @@ func (a *App) fetchData() {
 // ==========================================
 
 func main() {
-	// Setup Database (Change credentials to match your local Neo4j)
-	repo := NewRepository("neo4j+s://c46cdfa4.databases.neo4j.io", "neo4j", "bs5GPhugcnWvMaD39WD29QSzSx9jnhZwcQRfthW75hg")
+	// UPDATE: Using your Neo4j Aura connection details
+	dbUri := "neo4j+s://c46cdfa4.databases.neo4j.io"
+	dbUser := "neo4j"
+	dbPass := "bs5GPhugcnWvMaD39WD29QSzSx9jnhZwcQRfthW75hg"
+
+	repo := NewRepository(dbUri, dbUser, dbPass)
 
 	// Setup UI
-	w := app.NewWindow(app.Title("Gova Admin"), app.Size(unit.Dp(1024), unit.Dp(768)))
+	w := app.NewWindow(app.Title("Gova Admin - Cloud Connected"), app.Size(unit.Dp(1024), unit.Dp(768)))
 	th := material.NewTheme()
 	th.Shaper = text.NewShaper(text.WithCollection(gofont.Collection()))
 
 	// Init Resources
 	resources := []Resource{UserResource{}}
-	
+
 	// Init Application State
 	application := &App{
 		Repo:       repo,
@@ -353,7 +365,9 @@ func main() {
 		Window:     w,
 		NavButtons: make([]*widget.Clickable, len(resources)),
 	}
-	for i := range application.NavButtons { application.NavButtons[i] = &widget.Clickable{} }
+	for i := range application.NavButtons {
+		application.NavButtons[i] = &widget.Clickable{}
+	}
 
 	// Initial Data Load
 	application.fetchData()
